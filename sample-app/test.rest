@@ -1,0 +1,44 @@
+### task-manager:all-tasks
+GET localhost:8000/tasks
+
+### task-manager:task-by-id
+@taskId = 2
+GET localhost:8000/tasks/{{taskId}}
+
+### task-manager:create-task
+POST localhost:8000/tasks
+Content-Type: application/json
+
+{
+    "title": "Ny Task",
+    "description": "This is a new task",
+    "status": "pending",
+    "priority": 1,
+    "category_id": 1000
+}
+
+### task-manager:updtate-task-metadata
+POST localhost:8000/tasks/{{taskId}}/metadata
+Content-Type: application/json
+
+{
+    "Note": "This is a note for the task",
+    "Todo": [
+        "Subtask 1",
+        "Subtask 2",
+        "Subtask 3"
+    ],
+    "tool": {
+        "name": "Tool Name",
+        "version": "1.0.0",
+        "description": "This tool is used for task management"
+    },
+    "Reminder": "2023-10-01T10:00:00Z"
+}
+
+### task-manager:all-categories
+GET localhost:8000/categories
+
+### task-manager:category-by-id
+@categoryId = 2
+GET localhost:8000/categories/{{categoryId}}
