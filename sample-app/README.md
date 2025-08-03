@@ -9,51 +9,60 @@ Both implementations provide the same API endpoints and functionality, connectin
 
 ## Setup
 
-1. Make sure you have PostgreSQL with plplg-api extension installed
-2. Run the SQL setup scripts:
-   ```bash
-   psql -f task-manager.sql
-   psql -f task-manager-api.sql
-   ```
-3. Create a `.env` file with your database connection details:
-   ```
-   DB_HOST=localhost
-   DB_PORT=5515
-   DB_NAME=postgres
-   DB_USER=postgres
-   DB_PASS=postgres
-   ```
+Make sure you have PostgreSQL with plplg-api extension installed
+
+Run the SQL setup scripts:
+
+```bash
+psql -f task-manager.sql
+psql -f task-manager-api.sql
+```
+
+Create a `.env` file with your database connection details:
+
+```text
+DB_HOST=localhost
+DB_PORT=5515
+DB_NAME=postgres
+DB_USER=postgres
+DB_PASS=postgres
+```
 
 ## Running the API Server
 
 ### Python Implementation
 
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+Install dependencies:
 
-2. Run the server:
-   ```bash
-   python app.py
-   ```
+```bash
+pip install -r requirements.txt
+```
+
+Run the server:
+
+```bash
+python app.py
+```
 
 ### Node.js Implementation
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+Install dependencies:
 
-2. Run the server:
-   ```bash
-   npm start
-   ```
+```bash
+npm install
+```
+
+Run the server:
+
+```bash
+npm start
+```
 
 For development with auto-reload:
-   ```bash
-   npm run dev
-   ```
+
+```bash
+npm run dev
+```
 
 ## API Endpoints
 
