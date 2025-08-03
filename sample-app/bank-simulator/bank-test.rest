@@ -1,0 +1,103 @@
+### Bank Simulator API Tests - Node.js Version
+### Make sure the server is running: npm start or node bank-app.js
+
+### Health Check
+GET http://localhost:8000/
+
+### Customer Operations
+
+### Get all customers
+GET http://localhost:8000/customers/
+
+### Get specific customer
+GET http://localhost:8000/customers/1
+
+### Create a new customer
+POST http://localhost:8000/customers/
+Content-Type: application/json
+
+{
+  "first_name": "Alice",
+  "last_name": "Wilson",
+  "email": "alice.wilson@email.com",
+  "phone": "555-0104"
+}
+
+### Account Operations
+
+### Get customer's accounts
+GET http://localhost:8000/customers/1/accounts
+
+### Get account by number (use actual account number from previous response)
+GET http://localhost:8000/accounts/ACC0000000001
+
+### Create a new account for customer
+POST http://localhost:8000/accounts/
+Content-Type: application/json
+
+{
+  "customer_id": 1,
+  "account_type": "savings",
+  "initial_balance": 1000.00
+}
+
+### Transaction Operations
+
+### Deposit money
+POST http://localhost:8000/transactions/deposit
+Content-Type: application/json
+
+{
+  "account_number": "ACC0000000001",
+  "amount": 500.00,
+  "description": "Initial deposit"
+}
+
+### Withdraw money
+POST http://localhost:8000/transactions/withdraw
+Content-Type: application/json
+
+{
+  "account_number": "ACC0000000001",
+  "amount": 100.00,
+  "description": "ATM withdrawal"
+}
+
+### Transfer money between accounts
+POST http://localhost:8000/transactions/transfer
+Content-Type: application/json
+
+{
+  "from_account_number": "ACC0000000001",
+  "to_account_number": "ACC0000000002",
+  "amount": 250.00,
+  "description": "Transfer to savings"
+}
+
+### Get account transaction history
+GET http://localhost:8000/accounts/ACC0000000001/transactions
+
+### Error Testing
+
+### Try to withdraw more than balance
+POST http://localhost:8000/transactions/withdraw
+Content-Type: application/json
+
+{
+  "account_number": "ACC0000000001",
+  "amount": 99999.00,
+  "description": "Should fail - insufficient funds"
+}
+
+### Try to access non-existent account
+GET http://localhost:8000/accounts/INVALID123
+
+### Try to deposit negative amount
+POST http://localhost:8000/transactions/deposit
+Content-Type: application/json
+
+{
+  "account_number": "ACC0000000001",
+  "amount": -100.00,
+  "description": "Should fail - negative amount"
+}

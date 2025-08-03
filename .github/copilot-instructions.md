@@ -57,12 +57,16 @@ See `sample-app/` for complete examples. The pattern:
 2. Web layer calls `api.call('task_manager.get_task', {"id": 123})`
 3. Framework handles JSON→type conversion and error mapping
 
+Sample applications:
+- `sample-app/task-manager/` - Task management with categories and metadata
+- `sample-app/bank-simulator/` - Banking system with accounts and transactions
+
 ## Development Workflow
 
 ### Adding New API Functions
 
 1. Create schema-namespaced functions (e.g., `task_manager.create_task`)
-2. Use custom types for parameters (see `task-manager.sql` for examples)
+2. Use custom types for parameters (see `sample-app/task-manager/task-manager.sql` for examples)
 3. Return structured data, not just success/failure
 4. Test via `api.call()` before building web endpoints
 
@@ -75,7 +79,7 @@ See `sample-app/` for complete examples. The pattern:
 ### Testing Strategy
 
 - Use `sql/test.sql` patterns for SQL-level testing
-- REST testing via `sample-app/test.rest` files
+- REST testing via `sample-app/*/test.rest` files
 - Both Python (FastAPI) and Node.js (Express) implementations available
 
 ## Key Constraints

@@ -1,95 +1,47 @@
-# Task Manager API Sample App
+# Sample Applications
 
-This sample app demonstrates how to use the plplg-api to create a simple task management system with a REST API. The app is available in two implementations:
+This directory contains sample applications demonstrating how to use the plpg-api framework for building database-first APIs.
 
-- [Python (FastAPI)](app.py)
-- [Node.js (Express)](app.js)
+## Available Sample Apps
 
-Both implementations provide the same API endpoints and functionality, connecting to a PostgreSQL database with the plplg-api extension.
+### [Task Manager](task-manager/)
+A simple task management system with categories and task tracking. Demonstrates basic CRUD operations, relationships, and JSON metadata handling.
 
-## Setup
+- **Features**: Task creation, categorization, status tracking, metadata
+- **Demonstrates**: Persistence layer, relationships, JSON handling
+- **API**: REST endpoints for tasks and categories
+- **Includes**: Complete Python (FastAPI) and Node.js (Express) implementations
 
-Make sure you have PostgreSQL with plplg-api extension installed
+### [Bank Simulator](bank-simulator/)
+A simple banking system with customers, accounts, and transactions. Shows more complex business logic with financial constraints and atomic operations.
 
-Run the SQL setup scripts:
+- **Features**: Customer management, account creation, deposits, withdrawals, transfers
+- **Demonstrates**: Business logic validation, atomic transactions, error handling
+- **API**: Complete banking operations with proper financial constraints
+- **Includes**: Both Python (FastAPI) and Node.js (Express) implementations
 
-```bash
-psql -f task-manager.sql
-psql -f task-manager-api.sql
-```
+## Quick Start
 
-Create a `.env` file with your database connection details:
+Each sample app is self-contained with its own setup instructions, dependencies, and web servers:
 
-```text
-DB_HOST=localhost
-DB_PORT=5515
-DB_NAME=postgres
-DB_USER=postgres
-DB_PASS=postgres
-```
+- **Task Manager**: See [task-manager/README.md](task-manager/README.md)
+- **Bank Simulator**: See [bank-simulator/README.md](bank-simulator/README.md)
 
-## Running the API Server
+## General Setup Process
 
-### Python Implementation
+All sample apps follow this general pattern:
 
-Install dependencies:
+1. Install the core plpg-api framework (from project root):
+   ```bash
+   psql -f sql/000-ddl.sql
+   psql -f sql/010-api.sql
+   psql -f sql/011-json.sql
+   psql -f sql/012-throw.sql
+   psql -f sql/013-call.sql
+   psql -f sql/020-persistence-internal.sql
+   psql -f sql/021-persistence-public.sql
+   ```
 
-```bash
-pip install -r requirements.txt
-```
+2. Install the specific sample app schema and run the web server (see individual README files)
 
-Run the server:
-
-```bash
-python app.py
-```
-
-### Node.js Implementation
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Run the server:
-
-```bash
-npm start
-```
-
-For development with auto-reload:
-
-```bash
-npm run dev
-```
-
-## API Endpoints
-
-The server runs on `http://localhost:8000` by default and provides the following endpoints:
-
-### Tasks
-
-- `GET /tasks` - Get all tasks
-- `GET /tasks/{task_id}` - Get a specific task by ID
-- `POST /tasks` - Create a new task
-- `POST /tasks/{task_id}/metadata` - Update task metadata
-
-### Categories
-
-- `GET /categories` - Get all categories
-- `GET /categories/{category_id}` - Get a specific category by ID
-
-## Example Requests
-
-See the [test.rest](test.rest) file for example API requests that can be executed using REST Client extensions in various IDEs.
-
-## How It Works
-
-The sample app demonstrates how to use plplg-api's features:
-
-1. Database functions are defined in [task-manager-api.sql](task-manager-api.sql)
-2. The web server calls these functions using the `api.call` interface
-3. The API handles JSON data, validation, and error responses
-
-Both implementations use the same underlying PostgreSQL functions but with different web frameworks (FastAPI for Python and Express for Node.js).
+Each sample app demonstrates different aspects of the plpg-api framework with complete, self-contained implementations.

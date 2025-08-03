@@ -80,14 +80,27 @@ Important notes about the call function:
 
 ### 💾 Persistence Layer (020-persistence-internal.sql, 021-persistence-public.sql)
 
-A complete object persistence layer for database operations:
+A complete object persistence layer for database operations with comprehensive CRUD and search capabilities:
 
+#### Core CRUD Operations
 - `api_persist.refresh_record(record)`: Refresh a record from the database
-- `api_persist.fetch_record(record, id)`: Fetch a record by ID
+- `api_persist.fetch_record(record, id)`: Fetch a record by primary key
 - `api_persist.insert_record(record)`: Insert a new record
 - `api_persist.delete_record(record)`: Delete a record
 - `api_persist.update_record(record)`: Update an existing record
 - `api_persist.upsert_record(record)`: Insert or update a record
+
+#### Advanced Search Operations ✨ NEW
+- `api_persist.find_record(record, strip_null, check_null, check_unique)`: Flexible search with configurable behavior
+- `api_persist.find_single_record(record)`: Find exactly one record (throws error if 0 or multiple found)
+- `api_persist.find_many_records(record) RETURNS SETOF`: Find all matching records
+- `api_persist.find_optional_record(record)`: Find zero or one record (returns NULL if not found)
+
+The search functions support:
+- **Smart type detection**: Automatic handling of booleans, numbers, strings, and NULL values
+- **LIKE patterns**: Use `%` wildcards for partial matching
+- **Field filtering**: Automatically strips NULL fields from search criteria
+- **Flexible error handling**: Configurable behavior for no results or multiple results
 
 ## 📚 Usage Examples
 
@@ -120,18 +133,47 @@ CREATE OR REPLACE FUNCTION example_persistence_usage()
 RETURNS void AS $$
 DECLARE
     v_user record;
+    v_users record[];
 BEGIN
     -- Fetch a user by ID
-    SELECT * INTO v_user FROM users WHERE id = 123;
-    v_user := api_persist.fetch_record(v_user, 123);
+    v_user := api_persist.fetch_record(NULL::users, '123');
+    
+    -- Find a user by email (expect exactly one)
+    v_user := api_persist.find_single_record(
+        jsonb_populate_record(NULL::users, '{"email": "user@example.com"}')
+    );
+    
+    -- Find all users matching criteria
+    SELECT array_agg(u) INTO v_users 
+    FROM api_persist.find_many_records(
+        jsonb_populate_record(NULL::users, '{"status": "active"}')
+    ) u;
+    
+    -- Check if user exists (optional find)
+    v_user := api_persist.find_optional_record(
+        jsonb_populate_record(NULL::users, '{"username": "john_doe"}')
+    );
+    IF v_user IS NOT NULL THEN
+        RAISE NOTICE 'User found: %', v_user.username;
+    END IF;
+    
+    -- Search with LIKE pattern
+    SELECT array_agg(u) INTO v_users
+    FROM api_persist.find_many_records(
+        jsonb_populate_record(NULL::users, '{"name": "John%"}')
+    ) u;
     
     -- Update a user
-    UPDATE users SET name = 'New Name' WHERE id = v_user.id;
+    v_user.name = 'New Name';
     v_user := api_persist.update_record(v_user);
     
-    -- Insert a new user
-    INSERT INTO users (name, email) VALUES ('New User', 'user@example.com') RETURNING * INTO v_user;
-    v_user := api_persist.insert_record(v_user);
+    -- Insert a new user  
+    v_user := api_persist.insert_record(
+        jsonb_populate_record(NULL::users, '{"name": "New User", "email": "new@example.com"}')
+    );
+    
+    -- Upsert (insert or update)
+    v_user := api_persist.upsert_record(v_user);
     
     -- Delete a user
     v_user := api_persist.delete_record(v_user);
@@ -162,42 +204,63 @@ BEGIN
 END $$;
 ```
 
-## 🚀 Sample Application
+## 🚀 Sample Applications
 
-A task management demo app is included to showcase plplg-api capabilities:
+Two comprehensive sample applications demonstrate plpg-api capabilities in different domains:
 
-- Database schema with relationships
-- CRUD operations via the persistence layer
-- Error handling with HTTP status codes
-- JSON data manipulation
-- Dynamic function calling
+### 📋 Task Manager (`sample-app/task-manager/`)
+A complete project management system showcasing:
+- **Database-first design**: All business logic in PL/pgSQL functions
+- **Relationship handling**: Tasks, categories, and metadata management
+- **JSON operations**: Dynamic metadata storage and manipulation
+- **Web APIs**: Both Python (FastAPI) and Node.js (Express) implementations
+- **Full CRUD**: Create, read, update, delete operations via persistence layer
 
-### 📋 Demo App Structure & Usage
+### 🏦 Bank Simulator (`sample-app/bank-simulator/`)
+A realistic banking system demonstrating:
+- **Complex business logic**: Account management, transactions, balance validation
+- **Atomic operations**: Database transactions ensure financial consistency  
+- **Advanced error handling**: Insufficient funds, account validation, transfer limits
+- **Multi-implementation**: Both Python (FastAPI) and Node.js (Express) servers
+- **Search capabilities**: Find customers, accounts, and transaction history
 
-The demo consists of three files:
-- `sample-app/task-manager.sql` - Schema and initial data
-- `sample-app/task-manager-api.sql` - API functions
-- `sample-app/task-manager-demo.sql` - Usage examples
+Both applications include:
+- ✅ Complete database schemas with constraints and relationships
+- ✅ Comprehensive API functions using plpg-api patterns  
+- ✅ Web server implementations with RESTful endpoints
+- ✅ Test suites with example requests (`.rest` files)
+- ✅ Detailed setup and usage documentation
 
-Run the demo with:
+### 🎯 Key Demonstrations
 
-```sql
--- Install core files
-\i sql/000-ddl.sql
-\i sql/010-api.sql
-\i sql/011-json.sql
-\i sql/012-throw.sql
-\i sql/013-call.sql
-\i sql/020-persistence-internal.sql
-\i sql/021-persistence-public.sql
+- **Database-First Architecture**: Business logic lives in PostgreSQL, web layer is just HTTP translation
+- **Type Safety**: Custom PostgreSQL types ensure data integrity
+- **Error Handling**: HTTP-like status codes with detailed error messages
+- **Dynamic Function Calling**: `api.call()` bridges JSON APIs to typed PL/pgSQL functions
+- **Persistence Layer**: Generic CRUD operations with advanced search capabilities
+- **Performance**: Prepared statements and connection pooling for production use
 
--- Run demo
-\i sample-app/task-manager.sql
-\i sample-app/task-manager-api.sql
-\i sample-app/task-manager-demo.sql
+### 📋 Quick Start
+
+```bash
+# Install core plpg-api framework
+psql -f sql/000-ddl.sql
+psql -f sql/010-api.sql  
+psql -f sql/011-json.sql
+psql -f sql/012-throw.sql
+psql -f sql/013-call.sql
+psql -f sql/020-persistence-internal.sql
+psql -f sql/021-persistence-public.sql
+
+# Choose a sample application
+cd sample-app/task-manager/    # OR cd sample-app/bank-simulator/
+psql -f *.sql                  # Install schema and API functions
+
+# Run web server (Python or Node.js)
+python app.py                  # OR npm install && npm start
 ```
 
-The demo demonstrates task management, category handling, JSON operations, and proper error handling - all using PostgreSQL's native capabilities.
+Visit the individual sample app directories for detailed setup instructions and API documentation.
 
 ## 📄 License
 
