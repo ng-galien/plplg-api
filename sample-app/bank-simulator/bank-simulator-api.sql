@@ -54,11 +54,11 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION bank.get_customer_accounts(p_customer_id bank.customer_id_type)
     RETURNS SETOF bank.account AS
 $$
+DECLARE
+    v_account bank.account;
 BEGIN
-    RETURN QUERY 
-    SELECT * FROM bank.account 
-    WHERE customer_id = p_customer_id.id 
-    ORDER BY created_at DESC;
+    v_account.customer_id := p_customer_id.id;
+    RETURN QUERY SELECT * FROM api_persist.find_many_records(v_account);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -69,17 +69,11 @@ DECLARE
     v_account bank.account;
     v_customer bank.customer;
 BEGIN
-    SELECT * INTO v_account 
-    FROM bank.account 
-    WHERE account_number = p_account_number.account_number;
-    
-    IF NOT FOUND THEN
-        PERFORM api.throw_not_found('Account not found');
-    END IF;
-    
-    SELECT * INTO v_customer 
-    FROM bank.customer 
-    WHERE id = v_account.customer_id;
+    v_account.account_number := p_account_number.account_number;
+    v_account := api_persist.find_single_record(v_account);
+
+    v_customer.id := v_account.customer_id;
+    v_customer := api_persist.find_single_record(v_customer);
     
     RETURN to_jsonb(v_account) || jsonb_build_object(
         'customer', to_jsonb(v_customer)
@@ -122,32 +116,24 @@ DECLARE
     v_transaction bank.transaction;
 BEGIN
     -- Get the account
-    SELECT * INTO v_account 
-    FROM bank.account 
-    WHERE account_number = p_deposit.account_number AND status = 'active';
-    
-    IF NOT FOUND THEN
-        PERFORM api.throw_not_found('Active account not found');
-    END IF;
+    v_account.account_number := p_deposit.account_number;
+    v_account.status := 'active';
+    v_account := api_persist.find_single_record(v_account);
     
     -- Validate amount
     IF p_deposit.amount <= 0 THEN
         PERFORM api.throw_error('Deposit amount must be positive');
     END IF;
-    
-    -- Update account balance
-    UPDATE bank.account 
-    SET balance = balance + p_deposit.amount,
-        updated_at = current_timestamp
-    WHERE id = v_account.id;
-    
-    -- Create transaction record
-    INSERT INTO bank.transaction (to_account_id, transaction_type, amount, description)
-    VALUES (v_account.id, 'deposit', p_deposit.amount, p_deposit.description)
-    RETURNING * INTO v_transaction;
-    
+    -- Create a transaction record
+    v_transaction.to_account_id := v_account.id;
+    v_transaction.amount := p_deposit.amount;
+    v_transaction.transaction_type := 'deposit';
+    v_transaction.transaction_status := 'completed';
+    v_transaction.description := p_deposit.description;
+    v_transaction := api_persist.insert_record(v_transaction);
+
     -- Return updated account info with transaction
-    SELECT * INTO v_account FROM bank.account WHERE id = v_account.id;
+    v_account := api_persist.refresh_record(v_account);
     
     RETURN jsonb_build_object(
         'transaction', to_jsonb(v_transaction),

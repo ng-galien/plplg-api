@@ -189,11 +189,18 @@ DECLARE
     v_js_clean    jsonb;
     v_count       INT;
     v_where       TEXT;
+    v_schema_name TEXT;
+    v_table_name  TEXT;
+    v_primary_key TEXT;
+    v_query       TEXT;
 BEGIN
+    RAISE NOTICE 'Finding record with parameters: %', p_record;
     v_record_info = coalesce(p_cache_info, api_persist_internal.get_info(p_record));
-
+    v_schema_name = v_record_info ->> 'schema_name';
+    v_table_name = v_record_info ->> 'table_name';
+    v_primary_key = v_record_info -> 'primary_key' ->> 'name';
     IF p_record IS NULL THEN
-        PERFORM api.raise_exception('Record and JSONB both nulls', TRUE);
+        PERFORM api.throw_error('find_record => ' || v_schema_name || '.' || v_table_name || ' Record cannot be null');
     END IF;
     v_record = to_jsonb(p_record);
     v_js_clean = json_util.clean_attributes(v_record,
@@ -219,39 +226,37 @@ BEGIN
 
     IF v_where IS NULL THEN
         IF p_check_null THEN
-            PERFORM api.raise_exception('Record not found', TRUE, v_record::TEXT);
+            PERFORM api.throw_not_found('find_record => ' || v_schema_name || '.' || v_table_name || ' WHERE clause empty with search criteria: ' || coalesce(v_js_clean::TEXT, 'null'));
         ELSE
             RETURN;
         END IF;
     END IF;
-
-    EXECUTE format('SELECT COUNT(*) FROM %I.%I WHERE %s',
-                   (v_record_info ->> 'schema_name'),
-                   (v_record_info ->> 'table_name'),
-                   v_where) INTO v_count;
-
+    v_query = format('SELECT COUNT(*) FROM %I.%I WHERE %s',
+                     (v_record_info ->> 'schema_name'),
+                     (v_record_info ->> 'table_name'),
+                     v_where);
+    RAISE NOTICE 'Executing query: %', v_query;
+    EXECUTE v_query INTO v_count;
     CASE
         WHEN v_count = 1 THEN EXECUTE format('SELECT * FROM %I.%I WHERE %s',
                                              (v_record_info ->> 'schema_name'),
                                              (v_record_info ->> 'table_name'),
                                              v_where) INTO p_record;
-        WHEN v_count > 1 THEN 
-            IF p_check_unique THEN
-                PERFORM api.throw_invalid('Too many records found');
-            ELSE
-                PERFORM api.log_warning(format('Too many records found, taking the first row'));
-                EXECUTE format('SELECT * FROM %I.%I WHERE %s LIMIT 1',
-                               (v_record_info ->> 'schema_name'),
-                               (v_record_info ->> 'table_name'),
-                               v_where) INTO p_record;
-            END IF;
-        ELSE 
-            IF p_check_null THEN
-                PERFORM api.throw_not_found('Record not found');
-            END IF;
-            EXECUTE format('SELECT NULL::%I.%I',
-                        (v_record_info ->> 'schema_name'),
-                        (v_record_info ->> 'table_name')) INTO p_record;
+        WHEN v_count > 1 THEN IF p_check_unique THEN
+            PERFORM api.throw_invalid('find_record => Too many records found');
+        ELSE
+            PERFORM api.log_warning('Too many records found, taking the first row');
+            EXECUTE format('SELECT * FROM %I.%I WHERE %s LIMIT 1',
+                           (v_record_info ->> 'schema_name'),
+                           (v_record_info ->> 'table_name'),
+                           v_where) INTO p_record;
+        END IF;
+        ELSE IF p_check_null THEN
+            PERFORM api.throw_not_found('find_record => ' || v_schema_name || '.' || v_table_name || ' No record found with search criteria: ' || coalesce(v_js_clean::TEXT, 'null'));
+             END IF;
+             EXECUTE format('SELECT NULL::%I.%I',
+                            (v_record_info ->> 'schema_name'),
+                            (v_record_info ->> 'table_name')) INTO p_record;
         END CASE;
 END;
 $$ LANGUAGE plpgsql;
@@ -265,12 +270,12 @@ $$
 BEGIN
     -- Call find_record with strict single-record requirements
     p_record = api_persist.find_record(
-        p_record := p_record,
-        p_strip_null := p_strip_null,
-        p_check_null := TRUE,    -- Always throw error if no record found
-        p_check_unique := TRUE,  -- Always throw error if multiple records found
-        p_cache_info := p_cache_info
-    );
+            p_record := p_record,
+            p_strip_null := p_strip_null,
+            p_check_null := TRUE, -- Always throw error if no record found
+            p_check_unique := TRUE, -- Always throw error if multiple records found
+            p_cache_info := p_cache_info
+               );
 END;
 $$ LANGUAGE plpgsql;
 
@@ -292,7 +297,7 @@ BEGIN
     IF p_record IS NULL THEN
         PERFORM api.raise_exception('Record cannot be null', TRUE);
     END IF;
-    
+
     v_record = to_jsonb(p_record);
     v_js_clean = json_util.clean_attributes(v_record,
                                             (SELECT array_agg(name)
@@ -300,7 +305,7 @@ BEGIN
     IF p_strip_null THEN
         v_js_clean = jsonb_strip_nulls(v_js_clean);
     END IF;
-    
+
     -- Build WHERE clause using same logic as find_record
     SELECT string_agg(CASE
                           WHEN value::TEXT = ANY (ARRAY ['true','false'])
@@ -321,11 +326,11 @@ BEGIN
     v_query = format('SELECT * FROM %I.%I',
                      (v_record_info ->> 'schema_name'),
                      (v_record_info ->> 'table_name'));
-    
+
     IF v_where IS NOT NULL THEN
         v_query = v_query || ' WHERE ' || v_where;
     END IF;
-    
+
     RETURN QUERY EXECUTE v_query;
 END;
 $$ LANGUAGE plpgsql;
@@ -339,12 +344,12 @@ $$
 BEGIN
     -- Call find_record with lenient requirements - allows no results, but ensures uniqueness
     p_record = api_persist.find_record(
-        p_record := p_record,
-        p_strip_null := p_strip_null,
-        p_check_null := FALSE,   -- Don't throw error if no record found
-        p_check_unique := TRUE,  -- Still throw error if multiple records found
-        p_cache_info := p_cache_info
-    );
+            p_record := p_record,
+            p_strip_null := p_strip_null,
+            p_check_null := FALSE, -- Don't throw error if no record found
+            p_check_unique := TRUE, -- Still throw error if multiple records found
+            p_cache_info := p_cache_info
+               );
 END;
 $$ LANGUAGE plpgsql;
 

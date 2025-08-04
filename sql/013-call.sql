@@ -21,7 +21,7 @@
 -- SOFTWARE.
 
 --Main entry point for the API, takes a function name and a variable number of arguments,
-CREATE OR REPLACE FUNCTION api.call(p_function TEXT, p_arg jsonb)
+CREATE OR REPLACE FUNCTION api.call(p_function TEXT, p_arg jsonb DEFAULT NULL)
     RETURNS api.call_result AS
 $$
 DECLARE
